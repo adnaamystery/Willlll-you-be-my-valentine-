@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Valentine Meme Game</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+
+  <style>
+    :root{ --accent:#c00d2e; } 
+
+    *{ box-sizing:border-box }
+    html,body{ height:100%; margin:0 }
+
+    body{
+      font-family:'Anton', sans-serif;
+      display:flex; align-items:center; justify-content:center;
+      background:#fff; color:var(--accent);
+    }
+
+    .app{
+      position:relative;
+      width:min(900px,95vw);
+      height:min(620px,90vh);
+      overflow:hidden; text-align:center;
+    }
+
+    
+    .meme-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; }
+    .content{ position:relative; z-index:2; height:100%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+
+    h1{ font-size:64px; margin:0; line-height:1 }
+    p { font-size:20px; margin:0 0 12px }
+
+    .buttons{
+      position:relative;             
+      display:flex; gap:12px; padding:12px 16px;
+      border-radius:12px;
+    }
+
+    button{
+      font-family:'Anton', sans-serif; font-size:16px; padding:12px 20px;
+      border:2px solid #000; background:#f0f0f0; color:#000; cursor:pointer;
+      transition:transform .35s ease, background .2s ease; 
+      will-change: transform;
+    }
+    button:hover{ background:#ffcccc }
+
+    
+    .meme{
+      position:absolute; width:120px; height:120px;
+      border:3px solid #000; transform:translate(-50%,-50%);
+      object-fit:cover; object-position:center;
+      opacity:0; animation:fadeIn .45s forwards;
+      user-select:none;
+    }
+    @keyframes fadeIn{ to{opacity:1} }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <div class="meme-layer" id="memeLayer"></div>
+
+    <div class="content">
+      <h1>HAII YAA!</h1>
+      <p>Will you be my valentine?</p>
+
+      <div class="buttons" id="btnWrap">
+        <button id="Absofukinglutely">Absofukinglutely</button>
+        <button id="Nahh">Nahh</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const app       = document.getElementById('app');
+    const memeLayer = document.getElementById('memeLayer');
+    const yesBtn    = document.getElementById('Absofukinglutely');
+    const noBtn     = document.getElementById('Nahh');
+    const btnWrap   = document.getElementById('btnWrap');
+
+   
+    const memes = [
+      "https://i.redd.it/icd5o13nm8lc1.jpeg",
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSJ5JzTjkDpIroAL9coJIvjXoSJ1Z7MhW5srOSb6C9CFK0ny2gkQ4CTCK2aacx1z1ehBxY&usqp=CAU",
+      "https://ih1.redbubble.net/image.678965998.0141/flat,750x,075,f-pad,750x1000,f8f8f8.u9.jpg"
+    ];
+
+    
+    const START_ZONE   = 120;  
+    const STEP         = 60;   
+    const MAX_OFFSET   = 140;  
+    const RETURN_SLOW  = 0.45; 
+    let offsetX = 0, offsetY = 0;
+
+    
+    btnWrap.addEventListener('mousemove', (e) => {
+      const r = noBtn.getBoundingClientRect();
+      const bx = r.left + r.width/2;
+      const by = r.top  + r.height/2;
+
+      const dx = bx - e.clientX;
+      const dy = by - e.clientY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < START_ZONE) {
+      
+        const ux = dx / (dist || 1);
+        const uy = dy / (dist || 1);
+
+        offsetX += ux * (STEP * (1 - dist/START_ZONE)); 
+        offsetY += uy * (STEP * (1 - dist/START_ZONE));
+
+        const clamp = (v, m) => Math.max(-m, Math.min(m, v));
+        offsetX = clamp(offsetX, MAX_OFFSET);
+        offsetY = clamp(offsetY, MAX_OFFSET);
+
+        noBtn.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      }
+    });
+
+    btnWrap.addEventListener('mouseleave', () => {
+      offsetX = 0; offsetY = 0;
+      noBtn.style.transition = `transform ${RETURN_SLOW}s ease`;
+      requestAnimationFrame(() => {
+        noBtn.style.transform = `translate(0, 0)`;
+      });
+      setTimeout(() => {
+        noBtn.style.transition = '';
+      }, RETURN_SLOW * 1000 + 50);
+    });
+
+ 
+    let clickIndex = 0;
+    const stepDeg  = 360 / memes.length; 
+    const startDeg = -90;               
+
+    function placeNextMeme() {
+      const url = memes[clickIndex % memes.length];
+      const img = new Image();
+      img.className = 'meme';
+
+      img.onload = () => {
+        const rect   = app.getBoundingClientRect();
+        const cx     = rect.width  / 2;
+        const cy     = rect.height / 2 + 10;
+        const radius = Math.min(rect.width, rect.height) * 0.35;
+
+        const angleDeg = startDeg + (clickIndex * stepDeg);
+        const rad      = angleDeg * Math.PI / 180;
+
+        img.style.left = (cx + radius * Math.cos(rad)) + "px";
+        img.style.top  = (cy + radius * Math.sin(rad)) + "px";
+
+        memeLayer.appendChild(img);
+        clickIndex++;
+      };
+
+      img.onerror = () => {
+        console.warn("image failed:", url);
+        clickIndex++;
+      };
+
+      img.src = url;
+    }
+
+    noBtn.addEventListener('click', placeNextMeme);
+    yesBtn.addEventListener('click', () => alert('I LOVE YAAAAAAAAAAA!'));
+  </script>
+</body>
+</html>
